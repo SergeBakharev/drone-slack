@@ -22,10 +22,15 @@ func main() {
 	app.Action = run
 	app.Version = fmt.Sprintf("%s+%s", version, build)
 	app.Flags = []cli.Flag{
+		// cli.StringFlag{
+		// 	Name:   "webhook",
+		// 	Usage:  "slack webhook url",
+		// 	EnvVar: "SLACK_WEBHOOK,PLUGIN_WEBHOOK",
+		// },
 		cli.StringFlag{
-			Name:   "webhook",
-			Usage:  "slack webhook url",
-			EnvVar: "SLACK_WEBHOOK,PLUGIN_WEBHOOK",
+			Name:   "token",
+			Usage:  "slack token",
+			EnvVar: "SLACK_TOKEN,PLUGIN_TOKEN",
 		},
 		cli.StringFlag{
 			Name:   "channel",
@@ -224,7 +229,8 @@ func run(c *cli.Context) error {
 			Started: c.Int64("job.started"),
 		},
 		Config: Config{
-			Webhook:   c.String("webhook"),
+			//Webhook:   c.String("webhook"),
+			Token:     c.String("token"),
 			Channel:   c.String("channel"),
 			Recipient: c.String("recipient"),
 			Username:  c.String("username"),
@@ -238,8 +244,12 @@ func run(c *cli.Context) error {
 		},
 	}
 
-	if plugin.Config.Webhook == "" {
-		return errors.New("Missing webhook")
+	// if plugin.Config.Webhook == "" {
+	// 	return errors.New("Missing webhook")
+	// }
+
+	if plugin.Config.Token == "" {
+		return errors.New("Missing token")
 	}
 
 	return plugin.Exec()

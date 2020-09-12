@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bluele/slack"
 	"github.com/drone/drone-template-lib/template"
+	"github.com/slack-go/slack"
 )
 
 type (
@@ -45,7 +45,8 @@ type (
 	}
 
 	Config struct {
-		Webhook   string
+		//Webhook   string
+		Token     string
 		Channel   string
 		Recipient string
 		Username  string
@@ -108,21 +109,34 @@ func (p Plugin) Exec() error {
 	} else {
 		attachment.Fallback = fallback(p.Repo, p.Build)
 	}
+	api := slack.New(p.Config.Token)
+	// TODO: Convert this over to the new library
+	// Username := p.Config.Username
+	// IconUrl := p.Config.IconURL
+	// IconEmoji := p.Config.IconEmoji
 
-	payload := slack.WebHookPostPayload{}
-	payload.Username = p.Config.Username
-	payload.Attachments = []*slack.Attachment{&attachment}
-	payload.IconUrl = p.Config.IconURL
-	payload.IconEmoji = p.Config.IconEmoji
-
+	var channel string
 	if p.Config.Recipient != "" {
-		payload.Channel = prepend("@", p.Config.Recipient)
+		// TODO: Check if Recipient is a email address, and only then use the GetUserByEmail
+		// channel = prepend("@", p.Config.Recipient)
+
+		// find slack id of commit author
+		user, err := api.GetUserByEmail(p.Config.Recipient)
+
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			return err
+		}
+
+		channel = user.ID
+
 	} else if p.Config.Channel != "" {
-		payload.Channel = prepend("#", p.Config.Channel)
+		channel = prepend("#", p.Config.Channel)
 	}
-	if p.Config.LinkNames == true {
-		payload.LinkNames = "1"
-	}
+	// TODO: Convert this over to the new library
+	// if p.Config.LinkNames == true {
+	// 	LinkNames := "1"
+	// }
 	if p.Config.Template != "" {
 		var err error
 		attachment.Text, err = templateMessage(p.Config.Template, p)
@@ -133,9 +147,67 @@ func (p Plugin) Exec() error {
 		attachment.Text = message(p.Repo, p.Build)
 	}
 
-	client := slack.NewWebHook(p.Config.Webhook)
-	return client.PostMessage(&payload)
+	channelID, timestamp, err := api.PostMessage(
+		channel,
+		slack.MsgOptionAttachments(attachment),
+	)
+
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		return err
+	}
+	fmt.Printf("Message successfully sent to channel %s at %s", channelID, timestamp)
+	return err
 }
+
+// TODO: Revise webhook varient to use the new Slack library
+
+// func (p Plugin) Exec() error {
+// 	attachment := slack.Attachment{
+// 		Color:      p.Config.Color,
+// 		ImageURL:   p.Config.ImageURL,
+// 		MarkdownIn: []string{"text", "fallback"},
+// 	}
+// 	if p.Config.Color == "" {
+// 		attachment.Color = color(p.Build)
+// 	}
+// 	if p.Config.Fallback != "" {
+// 		f, err := templateMessage(p.Config.Fallback, p)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		attachment.Fallback = f
+// 	} else {
+// 		attachment.Fallback = fallback(p.Repo, p.Build)
+// 	}
+
+// 	payload := slack.WebHookPostPayload{}
+// 	payload.Username = p.Config.Username
+// 	payload.Attachments = []*slack.Attachment{&attachment}
+// 	payload.IconUrl = p.Config.IconURL
+// 	payload.IconEmoji = p.Config.IconEmoji
+
+// 	if p.Config.Recipient != "" {
+// 		payload.Channel = prepend("@", p.Config.Recipient)
+// 	} else if p.Config.Channel != "" {
+// 		payload.Channel = prepend("#", p.Config.Channel)
+// 	}
+// 	if p.Config.LinkNames == true {
+// 		payload.LinkNames = "1"
+// 	}
+// 	if p.Config.Template != "" {
+// 		var err error
+// 		attachment.Text, err = templateMessage(p.Config.Template, p)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	} else {
+// 		attachment.Text = message(p.Repo, p.Build)
+// 	}
+
+// 	client := slack.NewWebHook(p.Config.Webhook)
+// 	return client.PostMessage(&payload)
+// }
 
 func detectRef(build Build) string {
 	if build.Commit != "" {

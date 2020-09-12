@@ -24,8 +24,23 @@ Build the Docker image with the following commands:
 
 ```
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -tags netgo -o release/linux/amd64/drone-slack
-docker build --rm -t plugins/slack .
+docker build -f docker/Dockerfile.linux.amd64 -t plugins/slack .
 ```
+
+## Slack App Creation
+
+The functionality to send messages as PMs to a Slack user using their email as the recipient value requires the use of a Slack Token instead of simple webhook. 
+To use a Slack Token you need to create a Slack App with the appropriate OAuth scope.
+
+1. Go to https://api.slack.com/apps/new
+2. In the New Slack App modal form give the app a name (eg Drone Bot) and select the Slack Workspace you want to use it in
+3. Go to the _OAuth and Permissions_ page for your app and add the following OAuth Scopes in the _Bot Token_ section:
+  * chat:write - Used to send messages
+  * users:read - Used to find recipient Slack User IDs
+  * users:read.email - Used to look up the recipient by a email address
+4. (Optional) Go to the _Basic Information_ page and give the app a App Icon (./logo.png in repo), background colour (eg. #2C2D30), Description (eg "Drone is container native CICD platform."). Save your App changes.
+5. Go to the _Basic Information_ page and _Install your app to your workspace_
+6. Go to the _OAuth and Permissions_ page and use the _Bot User OAuth Access Token_ for the *SLACK_TOKEN* plugin setting in your pipeline.
 
 ## Usage
 
@@ -33,7 +48,7 @@ Execute from the working directory:
 
 ```
 docker run --rm \
-  -e SLACK_WEBHOOK=https://hooks.slack.com/services/... \
+  -e SLACK_TOKEN=https://hooks.slack.com/services/... \
   -e PLUGIN_CHANNEL=foo \
   -e PLUGIN_USERNAME=drone \
   -e DRONE_REPO_OWNER=octocat \
