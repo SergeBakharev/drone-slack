@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/drone/drone-template-lib/template"
@@ -117,18 +118,24 @@ func (p Plugin) Exec() error {
 
 	var channel string
 	if p.Config.Recipient != "" {
-		// TODO: Check if Recipient is a email address, and only then use the GetUserByEmail
-		// channel = prepend("@", p.Config.Recipient)
-
 		// find slack id of commit author
-		user, err := api.GetUserByEmail(p.Config.Recipient)
+
+		emailRegex := "^.+@.+$"
+		isEmail, err := regexp.MatchString(emailRegex, p.Config.Recipient)
 
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			return err
+		} else if isEmail == true {
+			user, err := api.GetUserByEmail(p.Config.Recipient)
+			if err != nil {
+				fmt.Printf("%s\n", err)
+				return err
+			}
+			channel = user.ID
+		} else {
+			channel = prepend("@", p.Config.Recipient)
 		}
-
-		channel = user.ID
 
 	} else if p.Config.Channel != "" {
 		channel = prepend("#", p.Config.Channel)
